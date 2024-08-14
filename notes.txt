@@ -1,0 +1,2 @@
+example desriptor file
+https://storage.googleapis.com/arachne-datanode/descriptor_base.json
