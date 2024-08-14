@@ -1,0 +1,75 @@
+version: '3'
+services:
+
+  # Application Postgres Database
+  arachne-datanode-postgres:
+    image: postgres:15.5-alpine
+    container_name: arachne-datanode-postgres
+    restart: always
+    logging:
+      options:
+        max-size: 100m
+    shm_size: "4g"
+    networks:
+      - arachne-network
+    ports:
+      - "127.0.0.1:5434:5432" # Port mapping (host:container)
+    volumes:
+      - arachne-pg-data:/var/lib/postgresql/data # Volume mount for Arachne PG data
+    environment:
+      POSTGRES_USER: ohdsi-user
+      POSTGRES_PASSWORD: ohdsi-password
+      POSTGRES_DB: arachne_datanode
+
+  # Execution Engine
+  arachne-execution-engine:
+    image: odysseusinc/execution_engine:2.2.1
+    platform: linux/amd64
+    container_name: arachne-execution-engine
+    restart: always
+    networks:
+      - arachne-network
+    ports:
+      - "127.0.0.1:8888:8888"  # Port mapping (host:container)
+    volumes:
+      - /tmp:/tmp
+      - /var/run/docker.sock:/var/run/docker.sock
+      - /tmp/executions:/etc/executions
+      - /Users/ablack/Desktop/ArachneInstall:/runtimes
+    environment:
+      - applyRuntimeDependenciesComparisonLogic=true
+      - libraries.location.strategus=strategus
+      - DOCKER_IMAGE_DEFAULT=executionengine.azurecr.io/darwin-base:v0.3
+      - ANALYSIS_MOUNT=/tmp/executions
+      - DOCKER_ENABLE=true
+      - RUNTIMESERVICE_DIST_DEFAULTDESCRIPTORFILE=descriptor_base.json
+      - DOCKER_REGISTRY_USERNAME=
+      - DOCKER_REGISTRY_PASSWORD=
+      - DOCKER_REGISTRY_URL=
+
+  # Arachne Datanode Service
+  arachne-datanode:
+    image: odysseusinc/arachne-datanode-ce:2.0.2
+    platform: linux/amd64
+    container_name: arachne-datanode
+    restart: always
+    networks:
+      - arachne-network
+    ports:
+      - "127.0.0.1:8082:8080" # Port mapping (host:container)
+    volumes:
+      - arachne-datanode-files:/var/arachne/files  # Volume mount for Arachne data
+    env_file:
+      - ~/Desktop/ArachneInstall/datanode.env  # Environment variables file
+    depends_on:
+      - arachne-datanode-postgres
+      - arachne-execution-engine
+
+# Volumes for the services
+volumes:
+  arachne-pg-data:
+  arachne-datanode-files:
+
+# Network definition
+networks:
+  arachne-network:
